@@ -15,19 +15,19 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 
 @Composable
-fun StarterScreenActivity(navController: NavHostController, filePath: String) {
+fun StarterScreenActivity(navController: NavHostController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        MyAlertDialog(navController = navController, filePath = filePath)
+        MyAlertDialog(navController = navController)
     }
 }
 
 @Composable
-fun MyAlertDialog(navController: NavHostController, filePath: String) {
+fun MyAlertDialog(navController: NavHostController) {
     val shouldShowDialog = remember { mutableStateOf(true) }
 
     if (shouldShowDialog.value) {
@@ -45,7 +45,7 @@ fun MyAlertDialog(navController: NavHostController, filePath: String) {
                 Button(
                     onClick = {
                         shouldShowDialog.value = false
-                        navController.navigate("home/${filePath}")
+                        navController.navigate("home")
                     }
                 ) {
                     Text(
@@ -54,7 +54,7 @@ fun MyAlertDialog(navController: NavHostController, filePath: String) {
                     )
                 }
             },
-            dismissButton = {
+            /*dismissButton = {
                 Button(
                     onClick = {
                         shouldShowDialog.value = false
@@ -65,7 +65,7 @@ fun MyAlertDialog(navController: NavHostController, filePath: String) {
                         color = Color.White
                     )
                 }
-            }
+            }*/
         )
     }
 }

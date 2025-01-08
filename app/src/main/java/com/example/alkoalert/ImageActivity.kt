@@ -1,6 +1,7 @@
 package com.example.alkoalert
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,12 +17,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 
 @Composable
-fun ImageActivity(filePath: String) {
+fun ImageActivity(navController: NavHostController, filePath: String) {
 
     val storageRef = Firebase.storage.reference
 
