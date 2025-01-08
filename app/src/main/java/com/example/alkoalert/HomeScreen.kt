@@ -40,6 +40,8 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,6 +104,53 @@ fun HomeScreen(navController: NavHostController) {
 fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostController, context: Context) {
     val scrollState = rememberScrollState()
 
+    val currentDate = LocalDate.now()
+    Log.d("Date", "${currentDate}")
+    val formattedOffers = offers.map { offer ->
+        offer.copy(date = offer.date.replace("-", " "))
+    }
+
+    val categorizedOffers = remember(formattedOffers) {
+        val aktualne = mutableListOf<Offer>()
+        val nadchodzace = mutableListOf<Offer>()
+
+        for (offer in formattedOffers) {
+            val dateRange = offer.date
+                .replace("od", "")
+                .replace("do", "")
+                .trim()
+                .split(" ")
+            Log.d("Date Range", "$dateRange")
+            if (dateRange.size >= 2) {
+                val startDay = dateRange[0]
+                val startMonth = dateRange[1]
+
+                val formattedStartDate = "2025-${startMonth
+                    .padStart(2, '0')}-${startDay.padStart(2, '0')}"
+                Log.d("Formatted Start Date", formattedStartDate)
+                val startDate = try {
+                    LocalDate.parse(formattedStartDate, DateTimeFormatter
+                        .ofPattern("yyyy-MM-dd"))
+                } catch (e: Exception) {
+                    Log.e("DateParsing",
+                        "Error parsing start date: $formattedStartDate", e)
+                    null
+                }
+                Log.d("Start date", "$startDate")
+                if (startDate != null && startDate.isAfter(currentDate)) {
+                    nadchodzace.add(offer)
+                } else {
+                    aktualne.add(offer)
+                }
+            } else {
+                Log.e("DateParsing", "Invalid date range format: ${offer.date}")
+            }
+        }
+        mapOf("Aktualne" to aktualne, "Nadchodzące" to nadchodzace)
+    }
+
+    val displayedOffers = categorizedOffers[tab] ?: emptyList()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -111,7 +160,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                 MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
             )
     ) {
-        offers.forEachIndexed { index, offer ->
+        displayedOffers.forEachIndexed { index, offer ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -136,11 +185,11 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
 
                     Column {
                         Text(
-                            text = offer.shop,
+                            text = offer.shop.replaceFirstChar { it.uppercase() },
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${offer.type}, ${offer.date}",
+                            text = "${offer.type.replaceFirstChar { it.uppercase() }}, ${offer.date}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -283,7 +332,7 @@ fun fetchOffersFromFirebase(
             }
 
             if (offersList.isNotEmpty()) {
-                callback(offersList) // Pass the fetched data to the callback
+                callback(offersList)
             } else {
                 Toast.makeText(context, "No offers found in Firebase", Toast.LENGTH_LONG).show()
             }
