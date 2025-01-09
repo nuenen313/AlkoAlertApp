@@ -28,7 +28,7 @@ fun StarterScreenActivity(navController: NavHostController) {
 
 @Composable
 fun MyAlertDialog(navController: NavHostController) {
-    val shouldShowDialog = remember { mutableStateOf(false) }
+    val shouldShowDialog = remember { mutableStateOf(true) }
 
     if (shouldShowDialog.value) {
         AlertDialog(
