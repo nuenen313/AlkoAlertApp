@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,12 +28,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
-import com.example.alkoalert.ui.theme.AlkoAlertTheme
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -42,6 +40,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +58,10 @@ fun HomeScreen(navController: NavHostController) {
             offers.clear()
             offers.addAll(fetchedOffers)
         }
+    }
+
+    BackHandler {
+        exitProcess(0)
     }
 
     Scaffold(
@@ -155,7 +158,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(horizontal = 1.dp, vertical = 1.dp)
+            .padding(horizontal = 1.dp, vertical = 3.dp)
             .background(
                 MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
             )
@@ -164,7 +167,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
                     .clickable {
                         if (offer.storage_path.isNotEmpty()) {
                             val encodedFilePath = Uri.encode(offer.storage_path)
@@ -189,7 +192,13 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "${offer.type.replaceFirstChar { it.uppercase() }}, ${offer.date}",
+                            text = "${offer.type.replaceFirstChar { it.uppercase() }}," +
+                                    " ${offer.date
+                                        .replace(" od ", "od")
+                                        .replace(" do ", "do")
+                                        .replace(" ", ".")
+                                        .replace("od.", "od ")
+                                        .replace("do", " do ")}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )

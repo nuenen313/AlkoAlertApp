@@ -2,6 +2,7 @@ package com.example.alkoalert
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
@@ -40,25 +43,52 @@ fun ImageActivity(navController: NavHostController, filePath: String) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        val scale = remember { mutableStateOf(1f) } // Scale factor for zooming
+        val offsetX = remember { mutableStateOf(0f) } // Horizontal translation
+        val offsetY = remember { mutableStateOf(0f) } // Vertical translation
+
         when {
             imageUrl != null -> {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Firebase Image",
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth(1f)
-                        .aspectRatio(1f, matchHeightConstraintsFirst = false),
-                    contentScale = ContentScale.Fit
-                )
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                scale.value *= zoom
+                                offsetX.value += pan.x
+                                offsetY.value += pan.y
+                            }
+                        }
+                        .graphicsLayer(
+                            scaleX = scale.value,
+                            scaleY = scale.value,
+                            translationX = offsetX.value,
+                            translationY = offsetY.value
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Firebase Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f, matchHeightConstraintsFirst = false),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
+
             errorMessage != null -> {
                 Text(
                     text = "Error: $errorMessage",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+
             else -> {
                 Text(
                     text = "Ładowanie...",
