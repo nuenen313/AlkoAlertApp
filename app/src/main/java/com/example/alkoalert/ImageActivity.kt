@@ -47,9 +47,13 @@ fun ImageActivity(navController: NavHostController, filePath: String) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        val scale = remember { mutableStateOf(1f) } // Scale factor for zooming
-        val offsetX = remember { mutableStateOf(0f) } // Horizontal translation
-        val offsetY = remember { mutableStateOf(0f) } // Vertical translation
+        val scale = remember { mutableStateOf(1f) }
+        val offsetX = remember { mutableStateOf(0f) }
+        val offsetY = remember { mutableStateOf(0f) }
+        val minScale = 1f
+        val maxScale = 3f
+        val maxTranslationX = 200f
+        val maxTranslationY = 200f
 
         when {
             imageUrl != null -> {
@@ -58,9 +62,14 @@ fun ImageActivity(navController: NavHostController, filePath: String) {
                         .fillMaxSize()
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
-                                scale.value *= zoom
-                                offsetX.value += pan.x
-                                offsetY.value += pan.y
+                                val newScale = (scale.value * zoom).coerceIn(minScale, maxScale)
+                                scale.value = newScale
+
+                                val maxOffsetX = maxTranslationX * newScale
+                                val maxOffsetY = maxTranslationY * newScale
+
+                                offsetX.value = (offsetX.value + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                offsetY.value = (offsetY.value + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
                             }
                         }
                         .graphicsLayer(
