@@ -2,6 +2,7 @@ package com.example.alkoalert
 
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -26,7 +27,7 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 
 @Composable
-fun ImageActivity(navController: NavHostController, filePath: String) {
+fun ImageActivity(navController: NavHostController, filePath: String, selectedTab: String) {
 
     val storageRef = Firebase.storage.reference
 
@@ -54,6 +55,11 @@ fun ImageActivity(navController: NavHostController, filePath: String) {
         val maxScale = 3f
         val maxTranslationX = 200f
         val maxTranslationY = 200f
+        BackHandler {
+            navController.navigate("home?tab=$selectedTab") {
+                popUpTo("home") { inclusive = true }
+            }
+        }
 
         when {
             imageUrl != null -> {
