@@ -44,15 +44,15 @@ import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavHostController) {
-    val selectedTab = remember { mutableStateOf("Aktualne") }
+fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne") {
+    val selectedTab = remember { mutableStateOf(initialTab) }
     val searchQuery = remember { mutableStateOf("") }
     val offers = remember { mutableStateListOf<Offer>() }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         val firebaseDatabase = FirebaseDatabase.getInstance(
-            "your-firebase-link")
+            "https://alkoalertfirebase-default-rtdb.europe-west1.firebasedatabase.app/")
         val databaseReference = firebaseDatabase.getReference("offers")
         fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
             offers.clear()
@@ -97,14 +97,15 @@ fun HomeScreen(navController: NavHostController) {
             ) {
                 TabSwitcher(selectedTab = selectedTab)
                 ShopColumn(offers = offers, tab = selectedTab.value,
-                    navController = navController, context = context)
+                    navController = navController, context = context, selectedTab = selectedTab)
             }
         }
     )
 }
 
 @Composable
-fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostController, context: Context) {
+fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostController, context: Context,
+               selectedTab: MutableState<String>) {
     val scrollState = rememberScrollState()
 
     val currentDate = LocalDate.now()
@@ -171,7 +172,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                     .clickable {
                         if (offer.storage_path.isNotEmpty()) {
                             val encodedFilePath = Uri.encode(offer.storage_path)
-                            navController.navigate("image/$encodedFilePath")
+                            navController.navigate("image/$encodedFilePath?tab=${selectedTab.value}")
                         } else {
                             Toast.makeText(context, "Invalid image path", Toast.LENGTH_SHORT).show()
                         }
