@@ -5,7 +5,7 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
+import com.google.gson.Gson
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -16,28 +16,27 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import coil.compose.rememberImagePainter
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.system.exitProcess
@@ -49,18 +48,38 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
     val searchQuery = remember { mutableStateOf("") }
     val offers = remember { mutableStateListOf<Offer>() }
     val context = LocalContext.current
+    val firebaseAuthManager = FirebaseAuthManager()
+    val firebaseDatabaseManager = FirebaseDatabaseManager()
+    val favoriteOffers = remember { mutableStateListOf<Offer>() }
 
     LaunchedEffect(Unit) {
-        val firebaseDatabase = FirebaseDatabase.getInstance(
-            "https://alkoalertfirebase-default-rtdb.europe-west1.firebasedatabase.app/")
-        val databaseReference = firebaseDatabase.getReference("offers")
-        fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
+        favoriteOffers.addAll(loadFavorites(context))
+        firebaseAuthManager.signInAnonymously { isAuthenticated ->
+            if (isAuthenticated) {
+                Log.d("Auth", "User signed in successfully")
+            } else {
+                Log.e("Auth", "Failed to sign in user")
+            }
+        }
+        if (FirebaseDatabaseManager.offerCache.isNotEmpty()) {
+            Log.e("CACHE","Cache not empty")
             offers.clear()
-            offers.addAll(fetchedOffers)
+            offers.addAll(FirebaseDatabaseManager.offerCache.values)
+        } else {
+            Log.e("CACHE", "Cache empty")
+            val firebaseDatabase = FirebaseDatabase.getInstance(
+                "your-firebase-url"
+            )
+            val databaseReference = firebaseDatabase.getReference("offers")
+            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
+                offers.clear()
+                offers.addAll(fetchedOffers)
+            }
         }
     }
 
     BackHandler {
+        saveFavorites(context, favoriteOffers)
         exitProcess(0)
     }
 
@@ -70,23 +89,20 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
                 title = { Text(text = "AlkoAlert") },
                 actions = {
                     IconButton(onClick = { /* TODO: Add location action */ }) {
-                        Icon(imageVector = Icons.Filled.LocationOn, contentDescription = "Location",
-                            tint = if (isSystemInDarkTheme())
-                                colorResource(id = R.color.tertiary_light)
-                            else
-                                colorResource(id = R.color.tertiary_dark))
+                        Icon(imageVector = Icons.Filled.LocationOn, contentDescription = "Location")
                     }
                     SearchBar(searchQuery)
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: FAB Action */ }) {
-                Icon(imageVector = Icons.Filled.ShoppingCart, contentDescription = "Shopping List",
-                    tint = if (isSystemInDarkTheme())
-                        colorResource(id = R.color.tertiary_light)
-                    else
-                        colorResource(id = R.color.tertiary_dark))
+            FloatingActionButton(onClick = {
+                val favoritesJson = Gson().toJson(favoriteOffers)
+                val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
+                saveFavorites(context, favoriteOffers)
+                navController.navigate("favorites/$encodedJson")
+            }) {
+                Icon(imageVector = Icons.Filled.Favorite, contentDescription = "Favorites")
             }
         },
         content = { innerPadding ->
@@ -96,8 +112,15 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
                     .padding(innerPadding)
             ) {
                 TabSwitcher(selectedTab = selectedTab)
-                ShopColumn(offers = offers, tab = selectedTab.value,
-                    navController = navController, context = context, selectedTab = selectedTab)
+                ShopColumn(
+                    offers = offers,
+                    tab = selectedTab.value,
+                    navController = navController,
+                    context = context,
+                    selectedTab = selectedTab,
+                    firebaseDatabaseManager = firebaseDatabaseManager,
+                    favoriteOffers = favoriteOffers
+                )
             }
         }
     )
@@ -105,11 +128,10 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
 
 @Composable
 fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostController, context: Context,
-               selectedTab: MutableState<String>) {
+               selectedTab: MutableState<String>, firebaseDatabaseManager: FirebaseDatabaseManager,
+               favoriteOffers: SnapshotStateList<Offer>) {
     val scrollState = rememberScrollState()
-
     val currentDate = LocalDate.now()
-    Log.d("Date", "${currentDate}")
     val formattedOffers = offers.map { offer ->
         offer.copy(date = offer.date.replace("-", " "))
     }
@@ -124,14 +146,12 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                 .replace("do", "")
                 .trim()
                 .split(" ")
-            Log.d("Date Range", "$dateRange")
             if (dateRange.size >= 2) {
                 val startDay = dateRange[0]
                 val startMonth = dateRange[1]
 
                 val formattedStartDate = "2025-${startMonth
                     .padStart(2, '0')}-${startDay.padStart(2, '0')}"
-                Log.d("Formatted Start Date", formattedStartDate)
                 val startDate = try {
                     LocalDate.parse(formattedStartDate, DateTimeFormatter
                         .ofPattern("yyyy-MM-dd"))
@@ -140,7 +160,6 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                         "Error parsing start date: $formattedStartDate", e)
                     null
                 }
-                Log.d("Start date", "$startDate")
                 if (startDate != null && startDate.isAfter(currentDate)) {
                     nadchodzace.add(offer)
                 } else {
@@ -160,9 +179,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(horizontal = 1.dp, vertical = 3.dp)
-            .background(
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
-            )
+            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
     ) {
         displayedOffers.forEachIndexed { index, offer ->
             Card(
@@ -183,7 +200,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LoadImageFromStorage(storagePath = offer.storage_path)
+                    firebaseDatabaseManager.LoadImageFromStorage(storagePath = offer.storage_path)
 
                     Spacer(modifier = Modifier.width(16.dp))
 
@@ -204,29 +221,29 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    val isFavorite = favoriteOffers.contains(offer)
+                    val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+                    val iconColor = if (isFavorite) Color.Red else Color.Gray
+
+                    IconButton(onClick = {
+                        if (isFavorite) {
+                            favoriteOffers.remove(offer)
+                        } else {
+                            favoriteOffers.add(offer)
+                        }
+                    }) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = "Favorite",
+                            tint = iconColor,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun LoadImageFromStorage(storagePath: String) {
-    val imageUri = remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(storagePath) {
-        val storageRef: StorageReference = FirebaseStorage.getInstance().reference.child(storagePath)
-        storageRef.downloadUrl.addOnSuccessListener {
-            imageUri.value = it.toString()
-        }.addOnFailureListener {
-            Log.e("LoadImage", "Error loading image from Firebase Storage", it)
-        }
-    }
-
-    imageUri.value?.let {
-        Image(painter = rememberImagePainter(it), contentDescription = "Shop Icon", modifier = Modifier.size(48.dp))
-    } ?: run {
-        Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primary)) {
         }
     }
 }
@@ -236,7 +253,7 @@ fun SearchBar(searchQuery: MutableState<String>) {
     Box(
         modifier = Modifier
             .padding(horizontal = 16.dp)
-            .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.onBackground, shape = MaterialTheme.shapes.small)
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
@@ -325,31 +342,23 @@ fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector)
     }
 }
 
-fun fetchOffersFromFirebase(
-    databaseReference: DatabaseReference,
-    context: Context,
-    callback: (List<Offer>) -> Unit
-) {
-    databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
-        override fun onDataChange(snapshot: DataSnapshot) {
-            val offersList = mutableListOf<Offer>()
+fun saveFavorites(context: Context, favoriteOffers: List<Offer>) {
+    val sharedPreferences = context.getSharedPreferences("AlkoAlert", Context.MODE_PRIVATE)
+    val editor = sharedPreferences.edit()
+    val gson = Gson()
+    val json = gson.toJson(favoriteOffers)
+    editor.putString("favorite_offers", json)
+    editor.apply()
+}
 
-            snapshot.children.forEach { child ->
-                val offer = child.getValue(Offer::class.java)
-                if (offer != null) {
-                    offersList.add(offer)
-                }
-            }
-
-            if (offersList.isNotEmpty()) {
-                callback(offersList)
-            } else {
-                Toast.makeText(context, "No offers found in Firebase", Toast.LENGTH_LONG).show()
-            }
-        }
-
-        override fun onCancelled(error: DatabaseError) {
-            Toast.makeText(context, "Failed to fetch data from Firebase", Toast.LENGTH_LONG).show()
-        }
-    })
+fun loadFavorites(context: Context): List<Offer> {
+    val sharedPreferences = context.getSharedPreferences("AlkoAlert", Context.MODE_PRIVATE)
+    val gson = Gson()
+    val json = sharedPreferences.getString("favorite_offers", null)
+    return if (json != null) {
+        val type = object : com.google.gson.reflect.TypeToken<List<Offer>>() {}.type
+        gson.fromJson(json, type)
+    } else {
+        emptyList()
+    }
 }
