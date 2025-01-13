@@ -1,5 +1,6 @@
 package com.example.alkoalert
 
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler

@@ -69,5 +69,17 @@ fun AppNavigation(navController: NavHostController) {
             val initialTab = backStackEntry.arguments?.getString("tab") ?: "Aktualne"
             HomeScreen(navController = navController, initialTab = initialTab)
         }
+
+        composable(
+            route = "favorites/{encodedJson}",
+            arguments = listOf(
+                navArgument("encodedJson") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val encodedOffersJson = backStackEntry.arguments?.getString("encodedJson") ?: ""
+            FavoritesScreen(navController = navController, favoritesJson = encodedOffersJson,
+                firebaseDatabaseManager = FirebaseDatabaseManager()
+            )
+        }
     }
 }

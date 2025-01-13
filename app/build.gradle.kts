@@ -70,15 +70,12 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    implementation(platform("com.google.firebase:firebase-bom:32.1.1")) // Firebase BOM
-    // ViewModel
+    implementation(platform("com.google.firebase:firebase-bom:32.1.1"))
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
-    // ViewModel utilities for Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
-    // Navigation
     implementation("androidx.navigation:navigation-compose:2.6.0-beta01")
-    // Authorization
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.gms:play-services-auth:20.6.0")
     implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("com.google.code.gson:gson:2.9.1")
 }
