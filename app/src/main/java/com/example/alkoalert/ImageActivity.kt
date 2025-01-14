@@ -57,8 +57,13 @@ fun ImageActivity(navController: NavHostController, filePath: String, selectedTa
         val maxTranslationX = 200f
         val maxTranslationY = 200f
         BackHandler {
-            navController.navigate("home?tab=$selectedTab") {
-                popUpTo("home") { inclusive = true }
+            if (selectedTab == "favorites"){
+                navController.popBackStack()
+            }
+            else {
+                navController.navigate("home?tab=$selectedTab") {
+                    popUpTo("home") { inclusive = true }
+                }
             }
         }
 

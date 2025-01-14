@@ -47,7 +47,7 @@ fun FavoritesScreen(navController: NavHostController, favoritesJson: String,
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "Favorites") }
+                title = { Text(text = "Zapisane oferty") }
             )
         },
         content = { innerPadding ->
@@ -61,8 +61,7 @@ fun FavoritesScreen(navController: NavHostController, favoritesJson: String,
                         offer = offer,
                         navController = navController,
                         firebaseDatabaseManager = firebaseDatabaseManager,
-                        context = context,
-                        decodedFavoritesJson = decodedFavoritesJson
+                        context = context
                     )
                 }
             }
@@ -75,8 +74,7 @@ fun OfferCard(
     offer: Offer,
     navController: NavHostController,
     firebaseDatabaseManager: FirebaseDatabaseManager,
-    context: Context,
-    decodedFavoritesJson: String
+    context: Context
 ) {
     Card(
         modifier = Modifier
