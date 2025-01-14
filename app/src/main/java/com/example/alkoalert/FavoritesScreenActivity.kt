@@ -23,6 +23,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -41,6 +43,7 @@ fun FavoritesScreen(navController: NavHostController, favoritesJson: String,
         navController.popBackStack()
     }
     val context = LocalContext.current
+    val imageUriCache = remember { mutableStateMapOf<String, String>() }
     val decodedFavoritesJson = URLDecoder.decode(favoritesJson, StandardCharsets.UTF_8.toString())
     val type = object : TypeToken<List<Offer>>() {}.type
     val favoriteOffers: List<Offer> = Gson().fromJson(decodedFavoritesJson, type)
@@ -61,7 +64,8 @@ fun FavoritesScreen(navController: NavHostController, favoritesJson: String,
                         offer = offer,
                         navController = navController,
                         firebaseDatabaseManager = firebaseDatabaseManager,
-                        context = context
+                        context = context,
+                        imageUriCache = imageUriCache
                     )
                 }
             }
@@ -74,7 +78,8 @@ fun OfferCard(
     offer: Offer,
     navController: NavHostController,
     firebaseDatabaseManager: FirebaseDatabaseManager,
-    context: Context
+    context: Context,
+    imageUriCache: MutableMap<String, String>
 ) {
     Card(
         modifier = Modifier
@@ -95,7 +100,8 @@ fun OfferCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            firebaseDatabaseManager.LoadImageFromStorage(storagePath = offer.storage_path)
+            firebaseDatabaseManager.LoadImageFromStorage(storagePath = offer.storage_path,
+                imageUriCache = imageUriCache)
 
             Spacer(modifier = Modifier.width(16.dp))
 
