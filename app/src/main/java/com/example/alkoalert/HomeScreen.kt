@@ -70,6 +70,7 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
             val firebaseDatabase = FirebaseDatabase.getInstance(
                 "your-firebase-url"
             )
+            firebaseDatabase.setPersistenceEnabled(true)
             val databaseReference = firebaseDatabase.getReference("offers")
             firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
                 offers.clear()
@@ -135,6 +136,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
     val formattedOffers = offers.map { offer ->
         offer.copy(date = offer.date.replace("-", " "))
     }
+    val imageUriCache = remember { mutableStateMapOf<String, String>() }
 
     val categorizedOffers = remember(formattedOffers) {
         val aktualne = mutableListOf<Offer>()
@@ -200,7 +202,8 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    firebaseDatabaseManager.LoadImageFromStorage(storagePath = offer.storage_path)
+
+                    firebaseDatabaseManager.LoadImageFromStorage(storagePath = offer.storage_path, imageUriCache = imageUriCache)
 
                     Spacer(modifier = Modifier.width(16.dp))
 

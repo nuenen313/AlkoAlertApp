@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberImagePainter
+import coil.request.CachePolicy
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -57,23 +58,41 @@ class FirebaseDatabaseManager {
         })
     }
     @Composable
-    fun LoadImageFromStorage(storagePath: String) {
-        val imageUri = remember { mutableStateOf<String?>(null) }
+    fun LoadImageFromStorage(storagePath: String, imageUriCache: MutableMap<String, String>) {
+        val imageUri = remember { mutableStateOf(imageUriCache[storagePath]) }
 
         LaunchedEffect(storagePath) {
-            val storageRef: StorageReference = FirebaseStorage.getInstance().reference.child(storagePath)
-            storageRef.downloadUrl.addOnSuccessListener {
-                imageUri.value = it.toString()
-            }.addOnFailureListener {
-                Log.e("LoadImage", "Error loading image from Firebase Storage", it)
+            if (imageUri.value == null) {
+                val storageRef = FirebaseStorage.getInstance().reference.child(storagePath)
+                storageRef.downloadUrl
+                    .addOnSuccessListener { uri ->
+                        imageUri.value = uri.toString()
+                        imageUriCache[storagePath] = uri.toString()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("LoadImage", "Error loading image from Firebase Storage", e)
+                    }
             }
         }
-
-        imageUri.value?.let {
-            Image(painter = rememberImagePainter(it), contentDescription = "Shop Icon", modifier = Modifier.size(48.dp))
-        } ?: run {
-            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primary)) {
-            }
+        Box(modifier = Modifier.size(48.dp)) {
+            imageUri.value?.let { uri ->
+                Image(
+                    painter = rememberImagePainter(
+                        data = uri,
+                        builder = {
+                            crossfade(true)
+                            memoryCachePolicy(CachePolicy.ENABLED)
+                            diskCachePolicy(CachePolicy.ENABLED)
+                        }
+                    ),
+                    contentDescription = "Shop Icon",
+                    modifier = Modifier.size(48.dp)
+                )
+            } ?: Box(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary)
+                    .size(48.dp)
+            )
         }
     }
     companion object {
