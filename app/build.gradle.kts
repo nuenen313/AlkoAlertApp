@@ -78,4 +78,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:20.6.0")
     implementation("io.coil-kt:coil-compose:2.4.0")
     implementation("com.google.code.gson:gson:2.9.1")
+    implementation("com.github.bumptech.glide:glide:4.15.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.15.0")
 }

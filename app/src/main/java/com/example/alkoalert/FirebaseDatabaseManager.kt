@@ -4,10 +4,8 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -19,10 +17,8 @@ import coil.request.CachePolicy
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
 
 class FirebaseDatabaseManager {
     fun fetchOffersFromFirebase(
@@ -88,11 +84,7 @@ class FirebaseDatabaseManager {
                     contentDescription = "Shop Icon",
                     modifier = Modifier.size(48.dp)
                 )
-            } ?: Box(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primary)
-                    .size(48.dp)
-            )
+            }
         }
     }
     companion object {

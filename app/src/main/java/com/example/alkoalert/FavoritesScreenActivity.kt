@@ -112,7 +112,12 @@ fun OfferCard(
                 )
                 Text(
                     text = "${offer.type.replaceFirstChar { it.uppercase() }}," +
-                            " ${offer.date.replace(" od ", "od").replace(" do ", "do")}",
+                            " ${offer.date
+                                .replace(" od ", "od")
+                                .replace(" do ", "do")
+                                .replace(" ", ".")
+                                .replace("od.", "od ")
+                                .replace("do", " do ")}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
