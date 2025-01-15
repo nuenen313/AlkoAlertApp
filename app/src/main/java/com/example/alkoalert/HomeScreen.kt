@@ -136,7 +136,8 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
     val formattedOffers = offers.map { offer ->
         offer.copy(date = offer.date.replace("-", " "))
     }
-    val imageUriCache = remember { mutableStateMapOf<String, String>() }
+    val imageCacheAktualne = remember { mutableMapOf<String, String>() }
+    val imageCacheNadchodzace = remember { mutableMapOf<String, String>() }
 
     val categorizedOffers = remember(formattedOffers) {
         val aktualne = mutableListOf<Offer>()
@@ -193,7 +194,9 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                             val encodedFilePath = Uri.encode(offer.storage_path)
                             navController.navigate("image/$encodedFilePath?tab=${selectedTab.value}")
                         } else {
-                            Toast.makeText(context, "Invalid image path", Toast.LENGTH_SHORT).show()
+                            Toast
+                                .makeText(context, "Invalid image path", Toast.LENGTH_SHORT)
+                                .show()
                         }
                     },
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -203,7 +206,17 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    firebaseDatabaseManager.LoadImageFromStorage(storagePath = offer.storage_path, imageUriCache = imageUriCache)
+                    if (tab == "Aktualne") {
+                        firebaseDatabaseManager.LoadImageFromStorage(
+                            storagePath = offer.storage_path,
+                            imageUriCache = imageCacheAktualne
+                        )
+                    } else {
+                        firebaseDatabaseManager.LoadImageFromStorage(
+                            storagePath = offer.storage_path,
+                            imageUriCache = imageCacheNadchodzace
+                        )
+                    }
 
                     Spacer(modifier = Modifier.width(16.dp))
 
@@ -221,7 +234,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                                         .replace("od.", "od ")
                                         .replace("do", " do ")}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
 
