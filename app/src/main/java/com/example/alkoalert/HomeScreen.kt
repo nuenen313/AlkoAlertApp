@@ -193,6 +193,19 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
     }
 
     val displayedOffers = categorizedOffers[tab] ?: emptyList()
+    val iterator = favoriteOffers.iterator()
+    while (iterator.hasNext()) {
+        val favoriteOffer = iterator.next()
+        val isValid = displayedOffers.any { newOffer ->
+            newOffer.shop == favoriteOffer.shop &&
+                    newOffer.date == favoriteOffer.date &&
+                    newOffer.storage_path == favoriteOffer.storage_path &&
+                    newOffer.type == favoriteOffer.type
+        }
+        if (!isValid) {
+            iterator.remove()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier

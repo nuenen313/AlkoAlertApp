@@ -49,7 +49,7 @@ fun ImageActivity(navController: NavHostController, filePath: String, selectedTa
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        val scale = remember { mutableStateOf(1f) }
+        val scale = remember { mutableStateOf(1.3f) }
         val offsetX = remember { mutableStateOf(0f) }
         val offsetY = remember { mutableStateOf(0f) }
         val minScale = 1f
