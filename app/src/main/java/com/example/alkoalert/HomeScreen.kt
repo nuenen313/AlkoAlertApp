@@ -74,9 +74,24 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
             )
             firebaseDatabase.setPersistenceEnabled(true)
             val databaseReference = firebaseDatabase.getReference("offers")
-            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
+            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context)
+            { fetchedOffers ->
+                val iterator = favoriteOffers.iterator()
+                while (iterator.hasNext()) {
+                    val favoriteOffer = iterator.next()
+                    val isValid = fetchedOffers.any { newOffer ->
+                        newOffer.shop == favoriteOffer.shop &&
+                                newOffer.date == favoriteOffer.date &&
+                                newOffer.storage_path == favoriteOffer.storage_path &&
+                                newOffer.type == favoriteOffer.type
+                    }
+                    if (!isValid) {
+                        iterator.remove()
+                    }
+                }
                 offers.clear()
                 offers.addAll(fetchedOffers)
+                favoriteOffers.addAll(loadFavorites(context))
             }
         }
     }
@@ -379,3 +394,4 @@ fun loadFavorites(context: Context): List<Offer> {
         emptyList()
     }
 }
+

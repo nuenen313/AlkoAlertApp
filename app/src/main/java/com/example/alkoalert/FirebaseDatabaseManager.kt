@@ -29,12 +29,13 @@ class FirebaseDatabaseManager {
         if (offerCache.isNotEmpty()) {
             return
         }
-        databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
+        databaseReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val offersList = mutableListOf<Offer>()
 
                 snapshot.children.forEachIndexed { index, child ->
                     val offer = child.getValue(Offer::class.java)
+                    Log.d("ooffer", "Found offer $offer")
                     if (offer != null) {
                         offersList.add(offer)
                         offerCache[index] = offer
@@ -87,6 +88,7 @@ class FirebaseDatabaseManager {
             }
         }
     }
+
     companion object {
         var offerCache = mutableMapOf<Int, Offer>()
     }
