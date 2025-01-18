@@ -10,6 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -72,9 +74,24 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
             )
             firebaseDatabase.setPersistenceEnabled(true)
             val databaseReference = firebaseDatabase.getReference("offers")
-            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
+            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context)
+            { fetchedOffers ->
+                val iterator = favoriteOffers.iterator()
+                while (iterator.hasNext()) {
+                    val favoriteOffer = iterator.next()
+                    val isValid = fetchedOffers.any { newOffer ->
+                        newOffer.shop == favoriteOffer.shop &&
+                                newOffer.date == favoriteOffer.date &&
+                                newOffer.storage_path == favoriteOffer.storage_path &&
+                                newOffer.type == favoriteOffer.type
+                    }
+                    if (!isValid) {
+                        iterator.remove()
+                    }
+                }
                 offers.clear()
                 offers.addAll(fetchedOffers)
+                favoriteOffers.addAll(loadFavorites(context))
             }
         }
     }
@@ -177,14 +194,13 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
 
     val displayedOffers = categorizedOffers[tab] ?: emptyList()
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
             .padding(horizontal = 1.dp, vertical = 3.dp)
             .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
     ) {
-        displayedOffers.forEachIndexed { index, offer ->
+        items(displayedOffers) { offer ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -378,3 +394,4 @@ fun loadFavorites(context: Context): List<Offer> {
         emptyList()
     }
 }
+
