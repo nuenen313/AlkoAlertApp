@@ -5,7 +5,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -38,7 +37,6 @@ class FirebaseDatabaseManager {
 
                 snapshot.children.forEachIndexed { index, child ->
                     val offer = child.getValue(Offer::class.java)
-                    Log.d("ooffer", "Found offer $offer")
                     if (offer != null) {
                         offersList.add(offer)
                         offerCache[index] = offer
@@ -80,7 +78,7 @@ class FirebaseDatabaseManager {
                     painter = rememberImagePainter(
                         data = uri,
                         builder = {
-                            crossfade(true)
+                            crossfade(false)
                             memoryCachePolicy(CachePolicy.ENABLED)
                             diskCachePolicy(CachePolicy.ENABLED)
                         }
