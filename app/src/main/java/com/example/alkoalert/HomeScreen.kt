@@ -11,16 +11,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.autoSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -49,6 +57,8 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
     val favoriteOffers = remember { mutableStateListOf<Offer>() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var route by remember { mutableStateOf("Home") }
+
     LaunchedEffect(Unit) {
         firebaseAuthManager.signInAnonymously { isAuthenticated ->
             if (isAuthenticated) {
@@ -96,15 +106,19 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = drawerState.isOpen,
         drawerContent = {
             AppDrawer(
-                route = "Home",
-                navigateToHome = { navController.navigate("home") },
+                route = route,
+                navigateToHome = {
+                    navController.navigate("home")
+                },
                 navigateToFavorites = {
                     val favoritesJson = Gson().toJson(favoriteOffers)
                     val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
                     navController.navigate("favorites/$encodedJson")
                 },
+//                navigateToSettings ={},
                 closeDrawer = { scope.launch { drawerState.close() } }
             )
         },
@@ -158,6 +172,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
     }
     val imageCacheAktualne = remember { mutableMapOf<String, String>() }
     val imageCacheNadchodzace = remember { mutableMapOf<String, String>() }
+    val lazyListState = rememberLazyListState()
 
     val categorizedOffers = remember(formattedOffers) {
         val aktualne = mutableListOf<Offer>()
@@ -194,7 +209,6 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
         }
         mapOf("Aktualne" to aktualne, "Nadchodzące" to nadchodzace)
     }
-
     val displayedOffers = categorizedOffers[tab] ?: emptyList()
     val iterator = favoriteOffers.iterator()
     while (iterator.hasNext()) {
@@ -209,48 +223,48 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
             iterator.remove()
         }
     }
-
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
+        state = lazyListState,
+        modifier = Modifier.fillMaxSize()
             .padding(horizontal = 1.dp, vertical = 3.dp)
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-    ) {
-        items(displayedOffers) { offer ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 3.dp)
-                    .clickable {
-                        if (offer.storage_path.isNotEmpty()) {
-                            val encodedFilePath = Uri.encode(offer.storage_path)
-                            navController.navigate("image/$encodedFilePath?tab=${selectedTab.value}")
-                        } else {
-                            Toast
-                                .makeText(context, "Invalid image path", Toast.LENGTH_SHORT)
-                                .show()
-                        }
-                    },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f))
+        ) {
+            items(displayedOffers) { offer ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                        .clickable {
+                            if (offer.storage_path.isNotEmpty()) {
+                                val encodedFilePath = Uri.encode(offer.storage_path)
+                                navController.navigate(
+                                    "image/$encodedFilePath?tab=${selectedTab.value}")
+                            } else {
+                                Toast.makeText(context,
+                                    "Invalid image path", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    colors = CardDefaults.cardColors(containerColor =
+                    MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (tab == "Aktualne") {
+                            firebaseDatabaseManager.LoadImageFromStorage(
+                                storagePath = offer.storage_path,
+                                imageUriCache = imageCacheAktualne
+                            )
+                        } else {
+                            firebaseDatabaseManager.LoadImageFromStorage(
+                                storagePath = offer.storage_path,
+                                imageUriCache = imageCacheNadchodzace
+                            )
+                        }
 
-                    if (tab == "Aktualne") {
-                        firebaseDatabaseManager.LoadImageFromStorage(
-                            storagePath = offer.storage_path,
-                            imageUriCache = imageCacheAktualne
-                        )
-                    } else {
-                        firebaseDatabaseManager.LoadImageFromStorage(
-                            storagePath = offer.storage_path,
-                            imageUriCache = imageCacheNadchodzace
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
 
                     Column {
                         Text(
@@ -270,32 +284,32 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                         )
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.weight(1f))
 
-                    val isFavorite = favoriteOffers.contains(offer)
-                    val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
-                    val iconColor = if (isFavorite) Color.Red else Color.Gray
+                        val isFavorite = favoriteOffers.contains(offer)
+                        val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+                        val iconColor = if (isFavorite) Color.Red else Color.Gray
 
-                    IconButton(onClick = {
-                        if (isFavorite) {
-                            favoriteOffers.remove(offer)
-                            saveFavorites(context, favoriteOffers)
-                        } else {
-                            favoriteOffers.add(offer)
-                            saveFavorites(context, favoriteOffers)
+                        IconButton(onClick = {
+                            if (isFavorite) {
+                                favoriteOffers.remove(offer)
+                                saveFavorites(context, favoriteOffers)
+                            } else {
+                                favoriteOffers.add(offer)
+                                saveFavorites(context, favoriteOffers)
+                            }
+                        }) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = "Favorite",
+                                tint = iconColor,
+                                modifier = Modifier.size(32.dp)
+                            )
                         }
-                    }) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = "Favorite",
-                            tint = iconColor,
-                            modifier = Modifier.size(32.dp)
-                        )
                     }
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -394,6 +408,7 @@ fun AppDrawer(
     modifier: Modifier = Modifier,
     navigateToHome: () -> Unit,
     navigateToFavorites: () -> Unit,
+//    navigateToSettings: () -> Unit,
     closeDrawer: () -> Unit
 ) {
     ModalDrawerSheet(modifier = modifier) {
@@ -417,6 +432,16 @@ fun AppDrawer(
                 closeDrawer()
             },
             icon = { Icon(imageVector = Icons.Filled.Favorite, contentDescription = null) },
+            shape = MaterialTheme.shapes.small
+        )
+        NavigationDrawerItem(
+            label = { Text(text = "Ustawienia", style = MaterialTheme.typography.bodyLarge) },
+            selected = route == "Settings",
+            onClick = {
+//                TODO:navigateToSettings()
+                closeDrawer()
+            },
+            icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = null) },
             shape = MaterialTheme.shapes.small
         )
     }
