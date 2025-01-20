@@ -5,12 +5,14 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberImagePainter
 import coil.request.CachePolicy
@@ -35,7 +37,6 @@ class FirebaseDatabaseManager {
 
                 snapshot.children.forEachIndexed { index, child ->
                     val offer = child.getValue(Offer::class.java)
-                    Log.d("ooffer", "Found offer $offer")
                     if (offer != null) {
                         offersList.add(offer)
                         offerCache[index] = offer
@@ -71,19 +72,20 @@ class FirebaseDatabaseManager {
                     }
             }
         }
-        Box(modifier = Modifier.size(48.dp)) {
+        Box(modifier = Modifier.size(56.dp)) {
             imageUri.value?.let { uri ->
                 Image(
                     painter = rememberImagePainter(
                         data = uri,
                         builder = {
-                            crossfade(true)
+                            crossfade(false)
                             memoryCachePolicy(CachePolicy.ENABLED)
                             diskCachePolicy(CachePolicy.ENABLED)
                         }
                     ),
                     contentDescription = "Shop Icon",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.Crop
                 )
             }
         }

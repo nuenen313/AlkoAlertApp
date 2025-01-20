@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import kotlin.system.exitProcess
 
 @Composable
 fun StarterScreenActivity(navController: NavHostController) {
@@ -54,10 +55,10 @@ fun MyAlertDialog(navController: NavHostController) {
                     )
                 }
             },
-            /*dismissButton = {
+            dismissButton = {
                 Button(
                     onClick = {
-                        shouldShowDialog.value = false
+                        exitProcess(0)
                     }
                 ) {
                     Text(
@@ -65,7 +66,7 @@ fun MyAlertDialog(navController: NavHostController) {
                         color = Color.White
                     )
                 }
-            }*/
+            }
         )
     }
 }

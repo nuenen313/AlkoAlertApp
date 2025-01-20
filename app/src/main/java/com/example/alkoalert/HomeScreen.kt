@@ -11,21 +11,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.autoSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,10 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
@@ -47,15 +50,16 @@ import kotlin.system.exitProcess
 @Composable
 fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne") {
     val selectedTab = remember { mutableStateOf(initialTab) }
-    val searchQuery = remember { mutableStateOf("") }
     val offers = remember { mutableStateListOf<Offer>() }
     val context = LocalContext.current
     val firebaseAuthManager = FirebaseAuthManager()
     val firebaseDatabaseManager = FirebaseDatabaseManager()
     val favoriteOffers = remember { mutableStateListOf<Offer>() }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    var route by remember { mutableStateOf("Home") }
 
     LaunchedEffect(Unit) {
-        favoriteOffers.addAll(loadFavorites(context))
         firebaseAuthManager.signInAnonymously { isAuthenticated ->
             if (isAuthenticated) {
                 Log.d("Auth", "User signed in successfully")
@@ -64,7 +68,7 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
             }
         }
         if (FirebaseDatabaseManager.offerCache.isNotEmpty()) {
-            Log.e("CACHE","Cache not empty")
+            Log.e("CACHE", "Cache not empty")
             offers.clear()
             offers.addAll(FirebaseDatabaseManager.offerCache.values)
         } else {
@@ -74,8 +78,7 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
             )
             firebaseDatabase.setPersistenceEnabled(true)
             val databaseReference = firebaseDatabase.getReference("offers")
-            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context)
-            { fetchedOffers ->
+            firebaseDatabaseManager.fetchOffersFromFirebase(databaseReference, context) { fetchedOffers ->
                 val iterator = favoriteOffers.iterator()
                 while (iterator.hasNext()) {
                     val favoriteOffer = iterator.next()
@@ -101,45 +104,57 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
         exitProcess(0)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = "AlkoAlert") },
-                actions = {
-                    IconButton(onClick = { /* TODO: Add location action */ }) {
-                        Icon(imageVector = Icons.Filled.LocationOn, contentDescription = "Location")
-                    }
-                    SearchBar(searchQuery)
-                }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = drawerState.isOpen,
+        drawerContent = {
+            AppDrawer(
+                route = route,
+                navigateToHome = {
+                    navController.navigate("home")
+                },
+                navigateToFavorites = {
+                    val favoritesJson = Gson().toJson(favoriteOffers)
+                    val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
+                    navController.navigate("favorites/$encodedJson")
+                },
+//                navigateToSettings ={},
+                closeDrawer = { scope.launch { drawerState.close() } }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                val favoritesJson = Gson().toJson(favoriteOffers)
-                val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
-                saveFavorites(context, favoriteOffers)
-                navController.navigate("favorites/$encodedJson")
-            }) {
-                Icon(imageVector = Icons.Filled.Favorite, contentDescription = "Favorites")
-            }
-        },
-        content = { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                TabSwitcher(selectedTab = selectedTab)
-                ShopColumn(
-                    offers = offers,
-                    tab = selectedTab.value,
-                    navController = navController,
-                    context = context,
-                    selectedTab = selectedTab,
-                    firebaseDatabaseManager = firebaseDatabaseManager,
-                    favoriteOffers = favoriteOffers
-                )
-            }
+        content = {
+            Log.d("Favorites", "Nav Drawer")
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(text = "AlkoAlert") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(imageVector = Icons.Filled.Menu, contentDescription = "Menu")
+                            }
+                        },
+                    )
+                },
+                content = { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        TabSwitcher(selectedTab = selectedTab, favoriteOffers = favoriteOffers,
+                            context = context)
+                        ShopColumn(
+                            offers = offers,
+                            tab = selectedTab.value,
+                            navController = navController,
+                            context = context,
+                            selectedTab = selectedTab,
+                            firebaseDatabaseManager = firebaseDatabaseManager,
+                            favoriteOffers = favoriteOffers
+                        )
+                    }
+                }
+            )
         }
     )
 }
@@ -148,13 +163,16 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
 fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostController, context: Context,
                selectedTab: MutableState<String>, firebaseDatabaseManager: FirebaseDatabaseManager,
                favoriteOffers: SnapshotStateList<Offer>) {
-    val scrollState = rememberScrollState()
+    LaunchedEffect(Unit) {
+        favoriteOffers.addAll(loadFavorites(context))
+    }
     val currentDate = LocalDate.now()
     val formattedOffers = offers.map { offer ->
         offer.copy(date = offer.date.replace("-", " "))
     }
     val imageCacheAktualne = remember { mutableMapOf<String, String>() }
     val imageCacheNadchodzace = remember { mutableMapOf<String, String>() }
+    val lazyListState = rememberLazyListState()
 
     val categorizedOffers = remember(formattedOffers) {
         val aktualne = mutableListOf<Offer>()
@@ -191,50 +209,62 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
         }
         mapOf("Aktualne" to aktualne, "Nadchodzące" to nadchodzace)
     }
-
     val displayedOffers = categorizedOffers[tab] ?: emptyList()
-
+    val iterator = favoriteOffers.iterator()
+    while (iterator.hasNext()) {
+        val favoriteOffer = iterator.next()
+        val isValid = displayedOffers.any { newOffer ->
+            newOffer.shop == favoriteOffer.shop &&
+                    newOffer.date == favoriteOffer.date &&
+                    newOffer.storage_path == favoriteOffer.storage_path &&
+                    newOffer.type == favoriteOffer.type
+        }
+        if (!isValid) {
+            iterator.remove()
+        }
+    }
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
+        state = lazyListState,
+        modifier = Modifier.fillMaxSize()
             .padding(horizontal = 1.dp, vertical = 3.dp)
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-    ) {
-        items(displayedOffers) { offer ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 3.dp)
-                    .clickable {
-                        if (offer.storage_path.isNotEmpty()) {
-                            val encodedFilePath = Uri.encode(offer.storage_path)
-                            navController.navigate("image/$encodedFilePath?tab=${selectedTab.value}")
-                        } else {
-                            Toast
-                                .makeText(context, "Invalid image path", Toast.LENGTH_SHORT)
-                                .show()
-                        }
-                    },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f))
+        ) {
+            items(displayedOffers) { offer ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                        .clickable {
+                            if (offer.storage_path.isNotEmpty()) {
+                                val encodedFilePath = Uri.encode(offer.storage_path)
+                                navController.navigate(
+                                    "image/$encodedFilePath?tab=${selectedTab.value}")
+                            } else {
+                                Toast.makeText(context,
+                                    "Invalid image path", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    colors = CardDefaults.cardColors(containerColor =
+                    MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (tab == "Aktualne") {
+                            firebaseDatabaseManager.LoadImageFromStorage(
+                                storagePath = offer.storage_path,
+                                imageUriCache = imageCacheAktualne
+                            )
+                        } else {
+                            firebaseDatabaseManager.LoadImageFromStorage(
+                                storagePath = offer.storage_path,
+                                imageUriCache = imageCacheNadchodzace
+                            )
+                        }
 
-                    if (tab == "Aktualne") {
-                        firebaseDatabaseManager.LoadImageFromStorage(
-                            storagePath = offer.storage_path,
-                            imageUriCache = imageCacheAktualne
-                        )
-                    } else {
-                        firebaseDatabaseManager.LoadImageFromStorage(
-                            storagePath = offer.storage_path,
-                            imageUriCache = imageCacheNadchodzace
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
 
                     Column {
                         Text(
@@ -254,71 +284,38 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                         )
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.weight(1f))
 
-                    val isFavorite = favoriteOffers.contains(offer)
-                    val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
-                    val iconColor = if (isFavorite) Color.Red else Color.Gray
+                        val isFavorite = favoriteOffers.contains(offer)
+                        val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+                        val iconColor = if (isFavorite) Color.Red else Color.Gray
 
-                    IconButton(onClick = {
-                        if (isFavorite) {
-                            favoriteOffers.remove(offer)
-                        } else {
-                            favoriteOffers.add(offer)
+                        IconButton(onClick = {
+                            if (isFavorite) {
+                                favoriteOffers.remove(offer)
+                                saveFavorites(context, favoriteOffers)
+                            } else {
+                                favoriteOffers.add(offer)
+                                saveFavorites(context, favoriteOffers)
+                            }
+                        }) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = "Favorite",
+                                tint = iconColor,
+                                modifier = Modifier.size(32.dp)
+                            )
                         }
-                    }) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = "Favorite",
-                            tint = iconColor,
-                            modifier = Modifier.size(32.dp)
-                        )
                     }
                 }
             }
         }
-    }
 }
 
 @Composable
-fun SearchBar(searchQuery: MutableState<String>) {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .background(MaterialTheme.colorScheme.onBackground, shape = MaterialTheme.shapes.small)
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        BasicTextField(
-            value = searchQuery.value,
-            onValueChange = { searchQuery.value = it },
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Search
-            ),
-            keyboardActions = KeyboardActions(
-                onSearch = { /*TODO: Handle search action here */ }
-            ),
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.Search,
-                        contentDescription = "Search",
-                        modifier = Modifier.padding(end = 8.dp),
-                        tint = if (isSystemInDarkTheme())
-                            colorResource(id = R.color.tertiary_light)
-                        else
-                            colorResource(id = R.color.tertiary_dark)
-                    )
-                    innerTextField()
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun TabSwitcher(selectedTab: MutableState<String>) {
+fun TabSwitcher(selectedTab: MutableState<String>, favoriteOffers: SnapshotStateList<Offer>,
+                context: Context) {
+    Log.d("Favorites", "Tab Switcher")
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -330,26 +327,34 @@ fun TabSwitcher(selectedTab: MutableState<String>) {
         TabButton(
             selectedTab = selectedTab,
             tab = "Aktualne",
-            icon = Icons.Filled.ShoppingCart
+            icon = Icons.Filled.ShoppingCart,
+            favoriteOffers = favoriteOffers,
+            context = context
         )
         TabButton(
             selectedTab = selectedTab,
             tab = "Nadchodzące",
-            icon = Icons.Outlined.DateRange
+            icon = Icons.Outlined.DateRange,
+            favoriteOffers = favoriteOffers,
+            context = context
         )
     }
 }
 
 @Composable
-fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector) {
+fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector,
+              favoriteOffers: SnapshotStateList<Offer>, context: Context) {
     val selectedColor = if (selectedTab.value == tab) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
         MaterialTheme.colorScheme.surface
     }
+    Log.d("Favorites", "Tab Button")
 
     Button(
-        onClick = { selectedTab.value = tab },
+        onClick = {
+            favoriteOffers.addAll(loadFavorites(context))
+            selectedTab.value = tab },
         modifier = Modifier
             .padding(4.dp),
         colors = ButtonDefaults.buttonColors(
@@ -379,6 +384,7 @@ fun saveFavorites(context: Context, favoriteOffers: List<Offer>) {
     val editor = sharedPreferences.edit()
     val gson = Gson()
     val json = gson.toJson(favoriteOffers)
+    Log.d("Favorites", "Saved favorites: $json")
     editor.putString("favorite_offers", json)
     editor.apply()
 }
@@ -387,6 +393,7 @@ fun loadFavorites(context: Context): List<Offer> {
     val sharedPreferences = context.getSharedPreferences("AlkoAlert", Context.MODE_PRIVATE)
     val gson = Gson()
     val json = sharedPreferences.getString("favorite_offers", null)
+    Log.d("Favorites", "Loaded favorites: $json")
     return if (json != null) {
         val type = object : com.google.gson.reflect.TypeToken<List<Offer>>() {}.type
         gson.fromJson(json, type)
@@ -395,3 +402,62 @@ fun loadFavorites(context: Context): List<Offer> {
     }
 }
 
+@Composable
+fun AppDrawer(
+    route: String,
+    modifier: Modifier = Modifier,
+    navigateToHome: () -> Unit,
+    navigateToFavorites: () -> Unit,
+//    navigateToSettings: () -> Unit,
+    closeDrawer: () -> Unit
+) {
+    ModalDrawerSheet(modifier = modifier) {
+        DrawerHeader()
+        Spacer(modifier = Modifier.padding(5.dp))
+        NavigationDrawerItem(
+            label = { Text(text = "Oferty", style = MaterialTheme.typography.bodyLarge) },
+            selected = route == "Home",
+            onClick = {
+                navigateToHome()
+                closeDrawer()
+            },
+            icon = { Icon(imageVector = Icons.Default.Home, contentDescription = null) },
+            shape = MaterialTheme.shapes.small
+        )
+        NavigationDrawerItem(
+            label = { Text(text = "Polubione oferty", style = MaterialTheme.typography.bodyLarge) },
+            selected = route == "Favorites",
+            onClick = {
+                navigateToFavorites()
+                closeDrawer()
+            },
+            icon = { Icon(imageVector = Icons.Filled.Favorite, contentDescription = null) },
+            shape = MaterialTheme.shapes.small
+        )
+        NavigationDrawerItem(
+            label = { Text(text = "Ustawienia", style = MaterialTheme.typography.bodyLarge) },
+            selected = route == "Settings",
+            onClick = {
+//                TODO:navigateToSettings()
+                closeDrawer()
+            },
+            icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = null) },
+            shape = MaterialTheme.shapes.small
+        )
+    }
+}
+
+@Composable
+fun DrawerHeader() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "AlkoAlert",
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "Menu")
+    }
+}

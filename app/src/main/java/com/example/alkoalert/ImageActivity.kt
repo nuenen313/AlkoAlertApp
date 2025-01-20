@@ -1,8 +1,6 @@
 package com.example.alkoalert
 
-import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -49,7 +47,7 @@ fun ImageActivity(navController: NavHostController, filePath: String, selectedTa
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        val scale = remember { mutableStateOf(1f) }
+        val scale = remember { mutableStateOf(1.3f) }
         val offsetX = remember { mutableStateOf(0f) }
         val offsetY = remember { mutableStateOf(0f) }
         val minScale = 1f
