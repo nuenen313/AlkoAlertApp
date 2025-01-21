@@ -31,7 +31,7 @@ fun SettingsScreen(navController: NavHostController, favoritesJson: String,) {
     val darkModeState = LocalDarkMode.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val route by remember { mutableStateOf("Seetings") }
+    val route by remember { mutableStateOf("Settings") }
     val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
     BackHandler {
         navController.popBackStack()
