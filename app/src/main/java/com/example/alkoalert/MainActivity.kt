@@ -1,11 +1,11 @@
 package com.example.alkoalert
 
+import ProvideDarkMode
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -22,13 +22,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AlkoAlertTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val navController = rememberNavController()
-                    AppNavigation(navController)
+            val sharedPreferences = getSharedPreferences("AlkoAlert", MODE_PRIVATE)
+            val isNightMode = sharedPreferences.getBoolean("night_mode", false)
+
+            ProvideDarkMode(isDarkMode = isNightMode) {
+                AlkoAlertTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        val navController = rememberNavController()
+                        AppNavigation(navController)
+                    }
                 }
             }
         }
@@ -80,6 +82,15 @@ fun AppNavigation(navController: NavHostController) {
             FavoritesScreen(navController = navController, favoritesJson = encodedOffersJson,
                 firebaseDatabaseManager = FirebaseDatabaseManager()
             )
+        }
+        composable(
+            route = "settings/{encodedJson}",
+            arguments = listOf(navArgument("encodedJson"){type = NavType.StringType}
+            )
+        ){
+            backStackEntry ->
+            val encodedOffersJson = backStackEntry.arguments?.getString("encodedJson") ?: ""
+            SettingsScreen(navController = navController, favoritesJson = encodedOffersJson)
         }
     }
 }
