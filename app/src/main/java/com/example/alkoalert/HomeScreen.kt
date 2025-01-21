@@ -232,19 +232,19 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
         mapOf("Aktualne" to aktualne, "Nadchodzące" to nadchodzace)
     }
     val displayedOffers = categorizedOffers[tab] ?: emptyList()
-    val iterator = favoriteOffers.iterator()
-    while (iterator.hasNext()) {
-        val favoriteOffer = iterator.next()
-        val isValid = displayedOffers.any { newOffer ->
-            newOffer.shop == favoriteOffer.shop &&
-                    newOffer.date == favoriteOffer.date &&
-                    newOffer.storage_path == favoriteOffer.storage_path &&
-                    newOffer.type == favoriteOffer.type
-        }
-        if (!isValid) {
-            iterator.remove()
-        }
-    }
+//    val iterator = favoriteOffers.iterator()
+//    while (iterator.hasNext()) {
+//        val favoriteOffer = iterator.next()
+//        val isValid = displayedOffers.any { newOffer ->
+//            newOffer.shop == favoriteOffer.shop &&
+//                    newOffer.date == favoriteOffer.date &&
+//                    newOffer.storage_path == favoriteOffer.storage_path &&
+//                    newOffer.type == favoriteOffer.type
+//        }
+//        if (!isValid) {
+//            iterator.remove()
+//        }
+//    }
     val filteredOffers = displayedOffers.filter { offer ->
         offer.shop.contains(searchQuery.value, ignoreCase = true) ||
                 offer.type.contains(searchQuery.value, ignoreCase = true)
@@ -320,11 +320,12 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                         IconButton(onClick = {
                             if (isFavorite) {
                                 favoriteOffers.remove(offer)
-                                saveFavorites(context, favoriteOffers)
+//                                saveFavorites(context, favoriteOffers)
                             } else {
                                 favoriteOffers.add(offer)
-                                saveFavorites(context, favoriteOffers)
+//                                saveFavorites(context, favoriteOffers)
                             }
+                            saveFavorites(context, favoriteOffers)
                         }) {
                             Icon(
                                 imageVector = icon,
@@ -385,7 +386,7 @@ fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector,
 
     Button(
         onClick = {
-            favoriteOffers.addAll(loadFavorites(context))
+//            favoriteOffers.addAll(loadFavorites(context))
             selectedTab.value = tab },
         modifier = Modifier
             .padding(4.dp),
@@ -445,7 +446,13 @@ fun AppDrawer(
     ModalDrawerSheet(modifier = modifier) {
         DrawerHeader()
         Spacer(modifier = Modifier.padding(5.dp))
+        val selectedColor = MaterialTheme.colorScheme.primary
+        val unselectedColor = MaterialTheme.colorScheme.onSurface
         NavigationDrawerItem(
+            colors = NavigationDrawerItemDefaults.colors(
+                selectedContainerColor = selectedColor,
+                unselectedTextColor = unselectedColor
+            ),
             label = { Text(text = "Oferty", style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground) },
             selected = route == "Home",
@@ -459,6 +466,10 @@ fun AppDrawer(
         NavigationDrawerItem(
             label = { Text(text = "Polubione oferty", style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground) },
+            colors = NavigationDrawerItemDefaults.colors(
+                selectedContainerColor = selectedColor,
+                unselectedTextColor = unselectedColor
+            ),
             selected = route == "Favorites",
             onClick = {
                 navigateToFavorites()
@@ -470,6 +481,10 @@ fun AppDrawer(
         NavigationDrawerItem(
             label = { Text(text = "Ustawienia", style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground) },
+            colors = NavigationDrawerItemDefaults.colors(
+                selectedContainerColor = selectedColor,
+                unselectedTextColor = unselectedColor
+            ),
             selected = route == "Settings",
             onClick = {
                 navigateToSettings()

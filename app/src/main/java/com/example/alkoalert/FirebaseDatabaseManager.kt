@@ -13,9 +13,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
 import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -33,13 +36,19 @@ class FirebaseDatabaseManager {
         }
         databaseReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("Storage Ref", "storageref")
                 val offersList = mutableListOf<Offer>()
 
                 snapshot.children.forEachIndexed { index, child ->
-                    val offer = child.getValue(Offer::class.java)
-                    if (offer != null) {
-                        offersList.add(offer)
-                        offerCache[index] = offer
+                    try {
+                        val offer = child.getValue(Offer::class.java)
+                        Log.d("FirebaseDebug", "Parsed Offer: $offer")
+                        if (offer != null) {
+                            offersList.add(offer)
+                            offerCache[index] = offer
+                        }
+                    } catch (e: Exception) {
+                        Log.e("FirebaseDebug", "Error parsing offer at index $index: ${child.value}", e)
                     }
                 }
 
@@ -75,13 +84,12 @@ class FirebaseDatabaseManager {
         Box(modifier = Modifier.size(56.dp)) {
             imageUri.value?.let { uri ->
                 Image(
-                    painter = rememberImagePainter(
-                        data = uri,
-                        builder = {
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(LocalContext.current).data(data = uri).apply(block = fun ImageRequest.Builder.() {
                             crossfade(false)
                             memoryCachePolicy(CachePolicy.ENABLED)
                             diskCachePolicy(CachePolicy.ENABLED)
-                        }
+                        }).build()
                     ),
                     contentDescription = "Shop Icon",
                     modifier = Modifier.fillMaxWidth(),
