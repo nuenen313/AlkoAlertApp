@@ -56,21 +56,21 @@ class FirebaseDatabaseManager {
         })
     }
     @Composable
-    fun LoadImageFromStorage(storagePath: String, imageUriCache: MutableMap<String, String>) {
+    fun LoadImageFromStorage(
+        storagePath: String, imageUriCache: MutableMap<String, String>
+    ) {
         val imageUri = remember { mutableStateOf(imageUriCache[storagePath]) }
 
         LaunchedEffect(storagePath) {
-            if (imageUri.value == null) {
-                val storageRef = FirebaseStorage.getInstance().reference.child(storagePath)
-                storageRef.downloadUrl
-                    .addOnSuccessListener { uri ->
-                        imageUri.value = uri.toString()
-                        imageUriCache[storagePath] = uri.toString()
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("LoadImage", "Error loading image from Firebase Storage", e)
-                    }
-            }
+            val storageRef = FirebaseStorage.getInstance().reference.child(storagePath)
+            storageRef.downloadUrl
+                .addOnSuccessListener { uri ->
+                    imageUri.value = uri.toString()
+                    imageUriCache[storagePath] = uri.toString()
+                }
+                .addOnFailureListener { e ->
+                    Log.e("LoadImage", "Error loading image from Firebase Storage", e)
+                }
         }
         Box(modifier = Modifier.size(56.dp)) {
             imageUri.value?.let { uri ->

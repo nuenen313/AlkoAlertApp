@@ -42,6 +42,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +63,8 @@ fun FavoritesScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val route by remember { mutableStateOf("Favorites") }
+    val favoritesJsonGson = Gson().toJson(favoriteOffersList)
+    val encodedJson = URLEncoder.encode(favoritesJsonGson, StandardCharsets.UTF_8.toString())
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -69,15 +72,18 @@ fun FavoritesScreen(
         drawerContent = {
             AppDrawer(
                 route = route,
-                navigateToHome = { navController.navigate("home") },
-                navigateToFavorites = {
-                    navController.navigate("favorites/$favoritesJson")
+                navigateToHome = {
+                    navController.navigate("home")
                 },
-//                navigateToSettings ={},
+                navigateToFavorites = {
+                    navController.navigate("favorites/$encodedJson")
+                },
+                navigateToSettings = {
+                    navController.navigate("settings/$encodedJson")
+                },
                 closeDrawer = { scope.launch { drawerState.close() } }
             )
-        },
-        content = {
+        },content = {
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -126,7 +132,8 @@ fun FavoritesScreen(
                                     Column {
                                         Text(
                                             text = offer.shop.replaceFirstChar { it.uppercase() },
-                                            style = MaterialTheme.typography.bodyLarge
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onBackground
                                         )
                                         Text(
                                             text = "${offer.type.replaceFirstChar { it.uppercase() }}," +
@@ -137,7 +144,7 @@ fun FavoritesScreen(
                                                         .replace("od.", "od ")
                                                         .replace("do", " do ")}",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.secondary
+                                            color = MaterialTheme.colorScheme.onBackground
                                         )
                                     }
                                 }

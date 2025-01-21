@@ -11,32 +11,26 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.autoSaver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -57,7 +51,8 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
     val favoriteOffers = remember { mutableStateListOf<Offer>() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var route by remember { mutableStateOf("Home") }
+    val route by remember { mutableStateOf("Home") }
+    val searchQuery = remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         firebaseAuthManager.signInAnonymously { isAuthenticated ->
@@ -118,12 +113,15 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
                     val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
                     navController.navigate("favorites/$encodedJson")
                 },
-//                navigateToSettings ={},
+                navigateToSettings = {
+                    val favoritesJson = Gson().toJson(favoriteOffers)
+                    val encodedJson = URLEncoder.encode(favoritesJson, StandardCharsets.UTF_8.toString())
+                    navController.navigate("settings/$encodedJson")
+                },
                 closeDrawer = { scope.launch { drawerState.close() } }
             )
         },
         content = {
-            Log.d("Favorites", "Nav Drawer")
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -141,6 +139,7 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
+                        SearchBar(searchQuery = searchQuery)
                         TabSwitcher(selectedTab = selectedTab, favoriteOffers = favoriteOffers,
                             context = context)
                         ShopColumn(
@@ -150,7 +149,8 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
                             context = context,
                             selectedTab = selectedTab,
                             firebaseDatabaseManager = firebaseDatabaseManager,
-                            favoriteOffers = favoriteOffers
+                            favoriteOffers = favoriteOffers,
+                            searchQuery = searchQuery
                         )
                     }
                 }
@@ -159,10 +159,32 @@ fun HomeScreen(navController: NavHostController, initialTab: String = "Aktualne"
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchBar(searchQuery: MutableState<String>) {
+    TextField(
+        value = searchQuery.value,
+        onValueChange = { searchQuery.value = it },
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+            focusedContainerColor = MaterialTheme.colorScheme.secondary),
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null
+            )
+        },
+        placeholder = {
+            Text("Wyszukaj typ produktu lub sklep")
+        },
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        singleLine = true
+    )
+}
 @Composable
 fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostController, context: Context,
                selectedTab: MutableState<String>, firebaseDatabaseManager: FirebaseDatabaseManager,
-               favoriteOffers: SnapshotStateList<Offer>) {
+               favoriteOffers: SnapshotStateList<Offer>, searchQuery: MutableState<String>) {
     LaunchedEffect(Unit) {
         favoriteOffers.addAll(loadFavorites(context))
     }
@@ -223,13 +245,17 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
             iterator.remove()
         }
     }
+    val filteredOffers = displayedOffers.filter { offer ->
+        offer.shop.contains(searchQuery.value, ignoreCase = true) ||
+                offer.type.contains(searchQuery.value, ignoreCase = true)
+    }
     LazyColumn(
         state = lazyListState,
         modifier = Modifier.fillMaxSize()
             .padding(horizontal = 1.dp, vertical = 3.dp)
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f))
+            .background(MaterialTheme.colorScheme.background)
         ) {
-            items(displayedOffers) { offer ->
+            items(filteredOffers) { offer ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -269,7 +295,8 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                     Column {
                         Text(
                             text = offer.shop.replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
                             text = "${offer.type.replaceFirstChar { it.uppercase() }}," +
@@ -280,7 +307,7 @@ fun ShopColumn(offers: List<Offer>, tab: String, navController: NavHostControlle
                                         .replace("od.", "od ")
                                         .replace("do", " do ")}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
@@ -345,11 +372,16 @@ fun TabSwitcher(selectedTab: MutableState<String>, favoriteOffers: SnapshotState
 fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector,
               favoriteOffers: SnapshotStateList<Offer>, context: Context) {
     val selectedColor = if (selectedTab.value == tab) {
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.surface
     }
-    Log.d("Favorites", "Tab Button")
+
+    val textColor = if (selectedTab.value == tab) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    }
 
     Button(
         onClick = {
@@ -366,15 +398,14 @@ fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector,
             contentDescription = tab,
             modifier = Modifier.padding(end = 4.dp),
             tint = if (isSystemInDarkTheme())
-                colorResource(id = R.color.tertiary_light)
+                MaterialTheme.colorScheme.onSurface
             else
-                colorResource(id = R.color.tertiary_dark)
+                MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = tab,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (selectedTab.value == tab) MaterialTheme.colorScheme.onSurface
-            else MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+            color = textColor
         )
     }
 }
@@ -408,14 +439,15 @@ fun AppDrawer(
     modifier: Modifier = Modifier,
     navigateToHome: () -> Unit,
     navigateToFavorites: () -> Unit,
-//    navigateToSettings: () -> Unit,
+    navigateToSettings: () -> Unit,
     closeDrawer: () -> Unit
 ) {
     ModalDrawerSheet(modifier = modifier) {
         DrawerHeader()
         Spacer(modifier = Modifier.padding(5.dp))
         NavigationDrawerItem(
-            label = { Text(text = "Oferty", style = MaterialTheme.typography.bodyLarge) },
+            label = { Text(text = "Oferty", style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground) },
             selected = route == "Home",
             onClick = {
                 navigateToHome()
@@ -425,7 +457,8 @@ fun AppDrawer(
             shape = MaterialTheme.shapes.small
         )
         NavigationDrawerItem(
-            label = { Text(text = "Polubione oferty", style = MaterialTheme.typography.bodyLarge) },
+            label = { Text(text = "Polubione oferty", style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground) },
             selected = route == "Favorites",
             onClick = {
                 navigateToFavorites()
@@ -435,10 +468,11 @@ fun AppDrawer(
             shape = MaterialTheme.shapes.small
         )
         NavigationDrawerItem(
-            label = { Text(text = "Ustawienia", style = MaterialTheme.typography.bodyLarge) },
+            label = { Text(text = "Ustawienia", style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground) },
             selected = route == "Settings",
             onClick = {
-//                TODO:navigateToSettings()
+                navigateToSettings()
                 closeDrawer()
             },
             icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = null) },
