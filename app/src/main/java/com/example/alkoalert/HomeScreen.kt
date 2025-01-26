@@ -373,15 +373,15 @@ fun TabSwitcher(selectedTab: MutableState<String>, favoriteOffers: SnapshotState
 fun TabButton(selectedTab: MutableState<String>, tab: String, icon: ImageVector,
               favoriteOffers: SnapshotStateList<Offer>, context: Context) {
     val selectedColor = if (selectedTab.value == tab) {
-        MaterialTheme.colorScheme.primary
-    } else {
         MaterialTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.background
     }
 
     val textColor = if (selectedTab.value == tab) {
-        MaterialTheme.colorScheme.onPrimary
+        MaterialTheme.colorScheme.onSurface
     } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        MaterialTheme.colorScheme.onBackground
     }
 
     Button(

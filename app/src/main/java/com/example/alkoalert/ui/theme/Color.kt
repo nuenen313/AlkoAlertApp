@@ -12,12 +12,12 @@ val onPrimaryDark = Color.White
 val onSecondaryDark = Color.White
 val onTertiaryDark = Color.White
 
-val primaryLight = Color(0xff2596be)
-val secondaryLight = Color(0xff25a5be)
-val tertiaryLight = Color(0xff2587be)
-val backgroundLight = Color(0xFFD2E3EA)
+val primaryLight = Color(0xffeeeee4)
+val secondaryLight = Color(0xffebebe7)
+val tertiaryLight = Color(0xfff6f6f0)
+val backgroundLight = Color(0xFFF9F6EE)
 val onBackgroundLight = Color(0xff3F4446)
-val surfaceLight = Color(0xFF8bb7c9)
+val surfaceLight = Color(0xFFb5c0c5)
 val onPrimaryLight = Color.Black
 val onSecondaryLight = Color.Black
 val onTertiaryLight = Color.Black

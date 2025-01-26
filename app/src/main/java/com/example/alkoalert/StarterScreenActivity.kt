@@ -3,6 +3,7 @@ package com.example.alkoalert
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +52,7 @@ fun MyAlertDialog(navController: NavHostController) {
                 ) {
                     Text(
                         text = "Potwierdzam",
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             },
@@ -63,7 +64,7 @@ fun MyAlertDialog(navController: NavHostController) {
                 ) {
                     Text(
                         text = "Anuluj",
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
