@@ -99,6 +99,16 @@ class FirebaseDatabaseManager {
         }
     }
 
+    fun checkImageExists(storagePath: String, callback: (Boolean) -> Unit) {
+        val storageReference = FirebaseStorage.getInstance().reference.child(storagePath)
+        storageReference.downloadUrl.addOnSuccessListener {
+            callback(true)
+        }.addOnFailureListener {
+            callback(false)
+            Log.d("Offer removed", storagePath)
+        }
+    }
+
     companion object {
         var offerCache = mutableMapOf<Int, Offer>()
     }
